@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Slack Sample Todo Home Tab App
+  
+Parameters:
+  EventBusName:
+    Type: String
+    Description: The name of the EventBridge Event Bus
+  BotToken:
+    Type: String
+    Description: Your bot token
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: nodejs12.x
+
+Resources:
+  SlackEventBus: 
+    Type: AWS::Events::EventBus
+    Properties: 
+        Name: !Ref EventBusName
+
+  SlackWebhooks:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:721177882564:applications/slack-webhooks-to-eventbridge
+        SemanticVersion: 1.1.0
+      Parameters:
+        EventBusName: !Ref EventBusName
+
+  SlackHomeTab:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/home-tab
+      Handler: lambda.handler
+      Environment:
+        Variables:
+          BOT_TOKEN: !Ref BotToken
+      Events:
+        OnAppHomeOpened:
+          Type: CloudWatchEvent
+          Properties:
+            EventBusName: !Ref EventBusName
+            Pattern:
+              detail:
+                body:
+                  event:
+                    type:
+                    - app_home_opened
+
+  AddTodo:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/add-todo
+      Handler: lambda.handler
+      Environment:
+        Variables:
+          BOT_TOKEN: !Ref BotToken
+      Events:
+        OnBlockAction:
+          Type: CloudWatchEvent
+          Properties:
+            EventBusName: !Ref EventBusName
+            Pattern:
+              detail:
+                body:
+                  payload:
+                    actions:
+                      value:
+                      - add_todo
+
+  HandleModalSubmission:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/modal-submission
+      Handler: lambda.handler
+      Environment:
+        Variables:
+          BOT_TOKEN: !Ref BotToken
+      Events:
+        OnAppHomeOpened:
+          Type: CloudWatchEvent
+          Properties:
+            EventBusName: !Ref EventBusName
+            Pattern:
+              detail:
+                body:
+                  payload:
+                    type:
+                    - view_submission
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  SlackWebhook:
+    Description: "A URL of the Slack webhook"
+    Value: !GetAtt SlackWebhooks.Outputs.SlackWebhookApiUrl
+
+  SlackHomeTabArn:
+    Description: A function Arn
+    Value: !Ref SlackHomeTab
