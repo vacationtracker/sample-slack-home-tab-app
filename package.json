@@ -21,7 +21,7 @@
     "@types/minimal-request-promise": "^1.5.0",
     "@types/node": "^12.0.10",
     "aws-lambda": "^1.0.5",
-    "aws-sdk": "^2.504.0",
+    "aws-sdk": "^2.814.0",
     "aws-xray-sdk": "^2.3.3",
     "minimal-request-promise": "^1.5.0",
     "source-map-support": "^0.5.12"
